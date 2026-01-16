@@ -1,0 +1,98 @@
+---
+alwaysApply: true
+---
+# shadcn/ui Component Usage
+
+## Overview
+This project uses shadcn/ui for ALL UI elements. No custom UI components are allowed.
+
+## Installation
+
+### Initialize shadcn/ui
+If shadcn/ui is not yet initialized in the project, run:
+
+```bash
+npx shadcn@latest init
+```
+
+This will:
+- Install necessary dependencies (tailwindcss, class-variance-authority, clsx, etc.)
+- Create a `components.json` configuration file
+- Set up the `src/components/ui/` directory structure
+- Configure Tailwind CSS
+- Create utility functions in `src/lib/utils.ts`
+
+### Adding Components
+To install a specific component (e.g., button), use:
+
+```bash
+npx shadcn@latest add button
+```
+
+Common components you may need:
+```bash
+npx shadcn@latest add button
+npx shadcn@latest add card
+npx shadcn@latest add input
+npx shadcn@latest add dialog
+npx shadcn@latest add form
+npx shadcn@latest add badge
+npx shadcn@latest add separator
+npx shadcn@latest add avatar
+npx shadcn@latest add progress
+npx shadcn@latest add toast
+npx shadcn@latest add alert
+npx shadcn@latest add tabs
+npx shadcn@latest add select
+npx shadcn@latest add textarea
+npx shadcn@latest add label
+```
+
+## Usage Rules
+
+### Always Use shadcn/ui Components
+✅ **CORRECT**:
+```tsx
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export function MyComponent() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Title</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button>Click me</Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+❌ **WRONG** - Never use raw HTML elements:
+```tsx
+export function MyComponent() {
+  return (
+    <div className="card">
+      <h2>Title</h2>
+      <button>Click me</button>
+    </div>
+  );
+}
+```
+
+### Import Path
+Always import components from `@/components/ui/`:
+```tsx
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+```
+
+### Styling
+- Use Tailwind utility classes for styling: `className="flex items-center gap-2"`
+- Use component variants: `<Button variant="outline" size="sm">`
+- Never write custom CSS for components
+
+## Before Creating UI
+**Always check if the component is installed first**. If you need a component that doesn't exist, run the appropriate `npx shadcn@latest add [component-name]` command.

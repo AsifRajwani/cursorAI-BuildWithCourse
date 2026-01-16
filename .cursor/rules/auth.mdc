@@ -1,0 +1,433 @@
+---
+alwaysApply: true
+description: Rules for authentication and authorization using Clerk
+---
+
+# Authentication & Authorization
+
+## Overview
+All authentication is handled by Clerk. Users can ONLY access their own data and must NEVER be able to access data that doesn't belong to them.
+
+## Critical Security Rules
+
+### 1. Always Authenticate Requests
+Every API route and server action MUST authenticate the user:
+
+✅ **CORRECT**:
+```typescript
+import { auth } from '@clerk/nextjs/server';
+
+export async function GET() {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  
+  // Continue with authenticated logic
+}
+```
+
+❌ **WRONG** - No authentication check:
+```typescript
+export async function GET() {
+  // Missing auth check - SECURITY VULNERABILITY
+  const decks = await db.select().from(decksTable);
+  return Response.json({ decks });
+}
+```
+
+### 2. Filter ALL Database Queries by userId
+
+#### Accessing User's Own Resources
+Always filter by the authenticated user's ID:
+
+✅ **CORRECT**:
+```typescript
+import { db } from '@/db';
+import { decksTable } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server';
+
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Filter by userId to ensure user only sees their own decks
+  const decks = await db
+    .select()
+    .from(decksTable)
+    .where(eq(decksTable.userId, userId));
+
+  return Response.json({ decks });
+}
+```
+
+❌ **WRONG** - No userId filter:
+```typescript
+// SECURITY VULNERABILITY - Returns ALL users' decks
+const decks = await db.select().from(decksTable);
+```
+
+#### Accessing Nested Resources
+When accessing nested resources (e.g., cards within a deck), verify ownership at the parent level:
+
+✅ **CORRECT**:
+```typescript
+import { db } from '@/db';
+import { decksTable, cardsTable } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server';
+
+export async function GET(
+  request: Request,
+  { params }: { params: { deckId: string } }
+) {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const deckId = parseInt(params.deckId);
+
+  // First, verify the deck belongs to the user
+  const deck = await db
+    .select()
+    .from(decksTable)
+    .where(and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.userId, userId)
+    ))
+    .limit(1);
+
+  if (!deck.length) {
+    return Response.json({ error: 'Deck not found' }, { status: 404 });
+  }
+
+  // Now fetch cards for this deck
+  const cards = await db
+    .select()
+    .from(cardsTable)
+    .where(eq(cardsTable.deckId, deckId));
+
+  return Response.json({ cards });
+}
+```
+
+❌ **WRONG** - No ownership verification:
+```typescript
+// SECURITY VULNERABILITY - User can access cards from ANY deck
+const cards = await db
+  .select()
+  .from(cardsTable)
+  .where(eq(cardsTable.deckId, deckId));
+```
+
+### 3. Verify Ownership Before Updates and Deletes
+
+Always verify the user owns the resource before modifying it:
+
+✅ **CORRECT**:
+```typescript
+import { db } from '@/db';
+import { decksTable } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server';
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { deckId: string } }
+) {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const deckId = parseInt(params.deckId);
+
+  // Delete only if the deck belongs to the user
+  const result = await db
+    .delete(decksTable)
+    .where(and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.userId, userId)
+    ))
+    .returning();
+
+  if (!result.length) {
+    return Response.json({ error: 'Deck not found' }, { status: 404 });
+  }
+
+  return Response.json({ success: true });
+}
+```
+
+❌ **WRONG** - No ownership check:
+```typescript
+// SECURITY VULNERABILITY - User can delete ANY deck
+await db.delete(decksTable).where(eq(decksTable.id, deckId));
+```
+
+### 4. Verify Ownership for Nested Resource Operations
+
+When updating or deleting nested resources (e.g., a card), verify the parent resource belongs to the user:
+
+✅ **CORRECT**:
+```typescript
+import { db } from '@/db';
+import { decksTable, cardsTable } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server';
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { deckId: string; cardId: string } }
+) {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const deckId = parseInt(params.deckId);
+  const cardId = parseInt(params.cardId);
+
+  // Verify the deck belongs to the user
+  const deck = await db
+    .select()
+    .from(decksTable)
+    .where(and(
+      eq(decksTable.id, deckId),
+      eq(decksTable.userId, userId)
+    ))
+    .limit(1);
+
+  if (!deck.length) {
+    return Response.json({ error: 'Deck not found' }, { status: 404 });
+  }
+
+  // Delete the card (it belongs to the user's deck)
+  const result = await db
+    .delete(cardsTable)
+    .where(and(
+      eq(cardsTable.id, cardId),
+      eq(cardsTable.deckId, deckId)
+    ))
+    .returning();
+
+  if (!result.length) {
+    return Response.json({ error: 'Card not found' }, { status: 404 });
+  }
+
+  return Response.json({ success: true });
+}
+```
+
+❌ **WRONG** - No deck ownership verification:
+```typescript
+// SECURITY VULNERABILITY - User can delete cards from ANY deck
+await db
+  .delete(cardsTable)
+  .where(eq(cardsTable.id, cardId));
+```
+
+## Schema Requirements
+
+### User ID Field
+The [schema.ts](mdc:src/db/schema.ts) defines tables with userId fields:
+
+- `decksTable.userId` - Clerk user ID (varchar(255))
+- Cards are owned indirectly through `cardsTable.deckId` foreign key
+
+### Ownership Chain
+```
+User (Clerk userId)
+  └─> Deck (decksTable.userId)
+      └─> Card (cardsTable.deckId)
+```
+
+To verify a card belongs to a user, verify the parent deck belongs to the user.
+
+## Server Actions
+
+For Next.js Server Actions, follow the same pattern:
+
+```typescript
+'use server';
+
+import { auth } from '@clerk/nextjs/server';
+import { db } from '@/db';
+import { decksTable } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+
+export async function createDeck(formData: FormData) {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    throw new Error('Unauthorized');
+  }
+
+  const name = formData.get('name') as string;
+  const description = formData.get('description') as string;
+
+  const [newDeck] = await db.insert(decksTable).values({
+    userId, // Always associate with authenticated user
+    name,
+    description,
+  }).returning();
+
+  return newDeck;
+}
+```
+
+## Client Components
+
+Client components cannot directly access auth(). Instead:
+
+1. **Fetch data through authenticated API routes**
+2. **Use Clerk's client-side hooks for UI only**:
+   - `useUser()` - Get current user info for display
+   - `useAuth()` - Get auth state and token
+
+✅ **CORRECT** - Client component fetches through API:
+```tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+
+export function DecksList() {
+  const [decks, setDecks] = useState([]);
+
+  useEffect(() => {
+    // Fetch through authenticated API route
+    fetch('/api/decks')
+      .then(res => res.json())
+      .then(data => setDecks(data.decks));
+  }, []);
+
+  return (
+    <div>
+      {decks.map(deck => (
+        <div key={deck.id}>{deck.name}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Middleware Protection
+
+Use Clerk middleware to protect routes:
+
+```typescript
+// middleware.ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/api(.*)',
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect();
+  }
+});
+
+export const config = {
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
+};
+```
+
+## Security Checklist
+
+Before deploying any API route or server action, verify:
+
+- [ ] `auth()` is called and userId is checked
+- [ ] 401 response is returned if userId is missing
+- [ ] All database queries filter by userId (for top-level resources)
+- [ ] Ownership is verified for nested resources
+- [ ] Updates/deletes verify ownership with `and()` conditions
+- [ ] No raw resource IDs are trusted without ownership verification
+- [ ] Error messages don't leak information about other users' data
+
+## Common Patterns
+
+### Pattern: List User's Resources
+```typescript
+const { userId } = await auth();
+if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+const items = await db
+  .select()
+  .from(table)
+  .where(eq(table.userId, userId));
+```
+
+### Pattern: Get Single Resource
+```typescript
+const { userId } = await auth();
+if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+const [item] = await db
+  .select()
+  .from(table)
+  .where(and(
+    eq(table.id, itemId),
+    eq(table.userId, userId)
+  ))
+  .limit(1);
+
+if (!item) return Response.json({ error: 'Not found' }, { status: 404 });
+```
+
+### Pattern: Modify Resource
+```typescript
+const { userId } = await auth();
+if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+const [updated] = await db
+  .update(table)
+  .set({ ...updates })
+  .where(and(
+    eq(table.id, itemId),
+    eq(table.userId, userId)
+  ))
+  .returning();
+
+if (!updated) return Response.json({ error: 'Not found' }, { status: 404 });
+```
+
+### Pattern: Access Nested Resource
+```typescript
+const { userId } = await auth();
+if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+// Verify parent ownership
+const [parent] = await db
+  .select()
+  .from(parentTable)
+  .where(and(
+    eq(parentTable.id, parentId),
+    eq(parentTable.userId, userId)
+  ))
+  .limit(1);
+
+if (!parent) return Response.json({ error: 'Not found' }, { status: 404 });
+
+// Now safely access child resources
+const children = await db
+  .select()
+  .from(childTable)
+  .where(eq(childTable.parentId, parentId));
+```
+
+## Resources
+
+- [Clerk Next.js Documentation](https://clerk.com/docs/quickstarts/nextjs)
+- [Clerk Auth() Reference](https://clerk.com/docs/references/nextjs/auth)
+- [Clerk Middleware](https://clerk.com/docs/references/nextjs/clerk-middleware)

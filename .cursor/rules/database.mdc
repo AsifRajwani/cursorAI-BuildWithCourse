@@ -1,0 +1,222 @@
+---
+alwaysApply: true
+description: Rules for database interactions using Drizzle ORM
+---
+
+# Database Interactions
+
+## Overview
+All database interactions in this project MUST use Drizzle ORM. Raw SQL queries are not allowed.
+
+## Database Setup
+
+### Schema
+The database schema is defined in [src/db/schema.ts](mdc:src/db/schema.ts) with the following tables:
+- `decksTable` - Collections of flashcards with userId, name, description
+- `cardsTable` - Individual flashcards within decks with deckId, front, back
+
+### Database Client
+Always import the database client from [src/db/index.ts](mdc:src/db/index.ts):
+
+```typescript
+import { db } from '@/db';
+```
+
+### Schema Tables
+Import the required tables from the schema:
+
+```typescript
+import { decksTable, cardsTable } from '@/db/schema';
+```
+
+## Query Patterns
+
+### SELECT Queries
+
+✅ **CORRECT** - Using Drizzle queries:
+```typescript
+import { db } from '@/db';
+import { decksTable, cardsTable } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+
+// Get all decks for a user
+const userDecks = await db.select().from(decksTable).where(eq(decksTable.userId, userId));
+
+// Get a specific deck
+const deck = await db.select().from(decksTable).where(eq(decksTable.id, deckId));
+
+// Get cards for a deck
+const cards = await db.select().from(cardsTable).where(eq(cardsTable.deckId, deckId));
+
+// Get single result
+const deck = await db.select().from(decksTable).where(eq(decksTable.id, deckId)).limit(1);
+```
+
+❌ **WRONG** - Raw SQL queries:
+```typescript
+// Never use raw SQL
+const decks = await db.execute(sql`SELECT * FROM decks WHERE user_id = ${userId}`);
+```
+
+### INSERT Queries
+
+✅ **CORRECT**:
+```typescript
+// Insert a new deck
+const [newDeck] = await db.insert(decksTable).values({
+  userId: userId,
+  name: "My Deck",
+  description: "A collection of flashcards"
+}).returning();
+
+// Insert multiple cards
+const newCards = await db.insert(cardsTable).values([
+  { deckId: deckId, front: "Question 1", back: "Answer 1" },
+  { deckId: deckId, front: "Question 2", back: "Answer 2" }
+]).returning();
+```
+
+### UPDATE Queries
+
+✅ **CORRECT**:
+```typescript
+import { eq } from 'drizzle-orm';
+
+// Update a deck
+const [updatedDeck] = await db
+  .update(decksTable)
+  .set({ 
+    name: "New Name",
+    updatedAt: new Date()
+  })
+  .where(eq(decksTable.id, deckId))
+  .returning();
+
+// Update a card
+await db
+  .update(cardsTable)
+  .set({ front: "Updated Question", back: "Updated Answer" })
+  .where(eq(cardsTable.id, cardId));
+```
+
+### DELETE Queries
+
+✅ **CORRECT**:
+```typescript
+import { eq } from 'drizzle-orm';
+
+// Delete a deck (will cascade delete cards due to foreign key)
+await db.delete(decksTable).where(eq(decksTable.id, deckId));
+
+// Delete a card
+await db.delete(cardsTable).where(eq(cardsTable.id, cardId));
+```
+
+## Drizzle Operators
+
+Always use Drizzle's query operators from `drizzle-orm`:
+
+```typescript
+import { eq, and, or, gt, gte, lt, lte, like, ilike, inArray } from 'drizzle-orm';
+
+// Equal
+.where(eq(decksTable.id, deckId))
+
+// Multiple conditions (AND)
+.where(and(
+  eq(decksTable.userId, userId),
+  eq(decksTable.id, deckId)
+))
+
+// OR conditions
+.where(or(
+  eq(decksTable.userId, userId1),
+  eq(decksTable.userId, userId2)
+))
+
+// IN array
+.where(inArray(decksTable.id, [1, 2, 3]))
+
+// LIKE pattern matching
+.where(like(decksTable.name, '%search%'))
+```
+
+## Joins
+
+For queries involving multiple tables, use Drizzle's join syntax:
+
+```typescript
+import { eq } from 'drizzle-orm';
+
+// Get decks with their cards count
+const decksWithCards = await db
+  .select({
+    deck: decksTable,
+    cards: cardsTable
+  })
+  .from(decksTable)
+  .leftJoin(cardsTable, eq(cardsTable.deckId, decksTable.id))
+  .where(eq(decksTable.userId, userId));
+```
+
+## Type Safety
+
+Drizzle provides full TypeScript type safety. Always leverage these types:
+
+```typescript
+import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { decksTable, cardsTable } from '@/db/schema';
+
+// Type for selecting from database
+type Deck = InferSelectModel<typeof decksTable>;
+type Card = InferSelectModel<typeof cardsTable>;
+
+// Type for inserting into database
+type NewDeck = InferInsertModel<typeof decksTable>;
+type NewCard = InferInsertModel<typeof cardsTable>;
+```
+
+## Best Practices
+
+1. **Always use Drizzle queries** - Never write raw SQL
+2. **Import the db client** from `@/db`
+3. **Import schema tables** you need from `@/db/schema`
+4. **Use proper operators** from `drizzle-orm` (eq, and, or, etc.)
+5. **Leverage TypeScript types** with InferSelectModel and InferInsertModel
+6. **Use `.returning()`** when you need the inserted/updated data back
+7. **Update timestamps** manually when updating records (updatedAt field)
+8. **Handle errors** appropriately with try-catch blocks
+
+## Example: Complete API Route
+
+```typescript
+import { db } from '@/db';
+import { decksTable } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server';
+
+export async function GET() {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const decks = await db
+      .select()
+      .from(decksTable)
+      .where(eq(decksTable.userId, userId));
+
+    return Response.json({ decks });
+  } catch (error) {
+    console.error('Database error:', error);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
+
+## Resources
+
+- [Drizzle ORM Documentation](https://orm.drizzle.team/)
+- [Drizzle Queries Guide](https://orm.drizzle.team/docs/rqb)
+- [Neon Database with Drizzle](https://neon.tech/docs/guides/drizzle)
