@@ -1,8 +1,6 @@
 ---
 alwaysApply: true
-description: Rules for authentication and authorization using Clerk
 ---
-
 # Authentication & Authorization
 
 ## Overview
@@ -318,7 +316,7 @@ export function DecksList() {
 
 ## Middleware Protection
 
-Use Clerk middleware to protect routes:
+Use Clerk middleware to protect routes and redirect to homepage for unauthenticated users:
 
 ```typescript
 // middleware.ts
@@ -331,7 +329,9 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
-    await auth.protect();
+    // Redirect to homepage (/) if user is not authenticated
+    // The homepage contains the sign in/sign up buttons
+    await auth.protect({ unauthenticatedUrl: "/" });
   }
 });
 

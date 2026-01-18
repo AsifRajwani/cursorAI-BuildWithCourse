@@ -3,8 +3,22 @@ alwaysApply: true
 ---
 # shadcn/ui Component Usage
 
-## Overview
-This project uses shadcn/ui for ALL UI elements. No custom UI components are allowed.
+## ⚠️ CRITICAL RULE: SHADCN/UI ONLY ⚠️
+
+**🚫 ABSOLUTELY NO CUSTOM UI COMPONENTS ARE ALLOWED IN THIS PROJECT 🚫**
+
+This project uses **EXCLUSIVELY** shadcn/ui components for ALL UI elements. You must NEVER create custom UI components. Every button, input, card, dialog, form field, and any other UI element MUST come from shadcn/ui.
+
+### What This Means:
+- ❌ **NO** custom Button components
+- ❌ **NO** custom Input components
+- ❌ **NO** custom Card components
+- ❌ **NO** custom Modal/Dialog components
+- ❌ **NO** custom Form components
+- ❌ **NO** raw HTML buttons, inputs, or form elements
+- ❌ **NO** custom styled divs that act as UI components
+- ✅ **ONLY** shadcn/ui components from `@/components/ui/`
+- ✅ This project is in dark mode so make sure there are no dark colored text on dark backgrounds (and vice versa)
 
 ## Installation
 
@@ -46,11 +60,13 @@ npx shadcn@latest add tabs
 npx shadcn@latest add select
 npx shadcn@latest add textarea
 npx shadcn@latest add label
+npx shadcn@latest add dropdown-menu
+npx shadcn@latest add popover
 ```
 
-## Usage Rules
+## Usage Rules - NO EXCEPTIONS
 
-### Always Use shadcn/ui Components
+### ⚠️ MANDATORY: ONLY shadcn/ui Components ⚠️
 ✅ **CORRECT**:
 ```tsx
 import { Button } from "@/components/ui/button";
@@ -70,8 +86,9 @@ export function MyComponent() {
 }
 ```
 
-❌ **WRONG** - Never use raw HTML elements:
+❌ **WRONG** - Never use raw HTML elements or custom components:
 ```tsx
+// WRONG - Raw HTML button
 export function MyComponent() {
   return (
     <div className="card">
@@ -79,6 +96,29 @@ export function MyComponent() {
       <button>Click me</button>
     </div>
   );
+}
+
+// WRONG - Custom button component
+export function CustomButton({ children }: { children: React.ReactNode }) {
+  return <button className="custom-btn">{children}</button>;
+}
+
+// WRONG - Styled div acting as a button
+export function MyComponent() {
+  return (
+    <div className="cursor-pointer bg-blue-500 px-4 py-2" onClick={handleClick}>
+      Click me
+    </div>
+  );
+}
+```
+
+✅ **ALWAYS USE SHADCN/UI**:
+```tsx
+import { Button } from "@/components/ui/button";
+
+export function MyComponent() {
+  return <Button onClick={handleClick}>Click me</Button>;
 }
 ```
 
@@ -94,5 +134,121 @@ import { Input } from "@/components/ui/input";
 - Use component variants: `<Button variant="outline" size="sm">`
 - Never write custom CSS for components
 
-## Before Creating UI
-**Always check if the component is installed first**. If you need a component that doesn't exist, run the appropriate `npx shadcn@latest add [component-name]` command.
+## Clerk Authentication Integration
+
+**CRITICAL**: When integrating Clerk authentication, you MUST use shadcn/ui components for ALL UI elements.
+
+### Sign In / Sign Up Buttons
+❌ **WRONG** - Using Clerk's default components or custom buttons:
+```tsx
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
+
+// WRONG - Don't use Clerk's default button styling
+export function Header() {
+  return (
+    <>
+      <SignInButton />
+      <SignUpButton />
+    </>
+  );
+}
+
+// WRONG - Don't create custom buttons
+export function Header() {
+  return <button onClick={openSignIn}>Sign In</button>;
+}
+```
+
+✅ **CORRECT** - Use shadcn/ui Button with Clerk modal:
+```tsx
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { SignIn, SignUp } from "@clerk/nextjs";
+
+export function Header() {
+  return (
+    <div className="flex gap-2">
+      {/* Sign In Modal */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="outline">Sign In</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign In</DialogTitle>
+            <DialogDescription>
+              Sign in to your account to continue
+            </DialogDescription>
+          </DialogHeader>
+          <SignIn routing="hash" />
+        </DialogContent>
+      </Dialog>
+
+      {/* Sign Up Modal */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button>Sign Up</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Account</DialogTitle>
+            <DialogDescription>
+              Sign up to get started
+            </DialogDescription>
+          </DialogHeader>
+          <SignUp routing="hash" />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+```
+
+### Key Points for Clerk Integration:
+1. **Always use shadcn/ui Button** for sign in/sign up triggers
+2. **Always use shadcn/ui Dialog** to display Clerk's sign in/sign up forms
+3. **Never use** Clerk's `<SignInButton>` or `<SignUpButton>` components directly
+4. **Use `routing="hash"`** in `<SignIn>` and `<SignUp>` components for modal behavior
+5. The Clerk UI (`<SignIn>` and `<SignUp>`) goes **inside** the Dialog, but the trigger **must be** a shadcn/ui Button
+
+## Before Creating ANY UI
+1. **Always check if the component is installed first**. If you need a component that doesn't exist, run the appropriate `npx shadcn@latest add [component-name]` command.
+2. **NEVER create custom UI components**. If you think you need a custom component, you probably need a shadcn/ui component instead.
+3. **NEVER use raw HTML elements** for interactive UI. Always use shadcn/ui.
+
+## Enforcement
+If you find yourself about to:
+- Create a new component in `src/components/` that isn't a page-level component
+- Use `<button>`, `<input>`, `<select>`, or other raw HTML form elements
+- Style a `<div>` to look/act like a button or form field
+- Create any custom UI component
+
+**STOP** and use the appropriate shadcn/ui component instead.
+
+## Summary - The Golden Rules
+
+### 🚨 REMEMBER THESE RULES AT ALL TIMES 🚨
+
+1. **EVERY UI element MUST be a shadcn/ui component** - No exceptions
+2. **NEVER create custom UI components** - They are forbidden
+3. **NEVER use raw HTML elements** for buttons, inputs, forms, or interactive UI
+4. **For Clerk auth, use shadcn/ui Button + Dialog** - Never use Clerk's default button components
+5. **Install the component first** - If it doesn't exist, run `npx shadcn@latest add [component-name]`
+6. **When in doubt** - Use shadcn/ui. Always.
+
+### Why This Matters
+- **Consistency**: Every UI element looks and behaves the same way
+- **Accessibility**: shadcn/ui components are built with accessibility in mind
+- **Maintainability**: No custom code to maintain, just use what's provided
+- **Quality**: Professional, tested components out of the box
+
+**If you violate these rules, you will break the project's UI standards. There are NO exceptions to these rules.**
