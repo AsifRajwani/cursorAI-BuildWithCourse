@@ -11,19 +11,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { createDeck } from '@/app/actions/deck-actions';
+import { createCard } from '@/app/actions/card-actions';
 
-export function CreateDeckDialog() {
+interface AddCardDialogProps {
+  deckId: number;
+}
+
+export function AddCardDialog({ deckId }: AddCardDialogProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [front, setFront] = useState('');
+  const [back, setBack] = useState('');
 
   // Ensure component is mounted before rendering Dialog to avoid hydration mismatch
   useEffect(() => {
@@ -36,19 +39,20 @@ export function CreateDeckDialog() {
     setError(null);
 
     try {
-      await createDeck({
-        name,
-        description,
+      await createCard({
+        deckId,
+        front,
+        back,
       });
       
       // Reset form fields
-      setName('');
-      setDescription('');
+      setFront('');
+      setBack('');
       setIsOpen(false);
       router.refresh(); // Refresh server component data
     } catch (error) {
-      console.error('Failed to create deck:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create deck');
+      console.error('Failed to create card:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create card');
     } finally {
       setIsCreating(false);
     }
@@ -56,19 +60,19 @@ export function CreateDeckDialog() {
 
   // Prevent hydration mismatch by not rendering Dialog until mounted
   if (!mounted) {
-    return <Button size="lg">Create New Deck</Button>;
+    return <Button size="lg">Add Card</Button>;
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="lg">Create New Deck</Button>
+        <Button size="lg">Add Card</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New Deck</DialogTitle>
+          <DialogTitle>Add New Card</DialogTitle>
           <DialogDescription>
-            Add a new flashcard deck to your collection
+            Create a new flashcard for this deck
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -78,25 +82,27 @@ export function CreateDeckDialog() {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="name">Deck Name</Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="e.g., Spanish Vocabulary"
+            <Label htmlFor="front">Question (Front)</Label>
+            <Textarea
+              id="front"
+              name="front"
+              placeholder="e.g., What is the capital of France?"
+              rows={3}
               required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="back">Answer (Back)</Label>
             <Textarea
-              id="description"
-              name="description"
-              placeholder="What is this deck about?"
+              id="back"
+              name="back"
+              placeholder="e.g., Paris"
               rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              required
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -108,7 +114,7 @@ export function CreateDeckDialog() {
               Cancel
             </Button>
             <Button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Deck'}
+              {isCreating ? 'Creating...' : 'Add Card'}
             </Button>
           </div>
         </form>

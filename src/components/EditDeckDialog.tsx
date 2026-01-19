@@ -11,19 +11,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { createDeck } from '@/app/actions/deck-actions';
+import { updateDeck } from '@/app/actions/deck-actions';
 
-export function CreateDeckDialog() {
+interface EditDeckDialogProps {
+  deckId: number;
+  currentName: string;
+  currentDescription: string | null;
+}
+
+export function EditDeckDialog({ deckId, currentName, currentDescription }: EditDeckDialogProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [name, setName] = useState(currentName);
+  const [description, setDescription] = useState(currentDescription || '');
 
   // Ensure component is mounted before rendering Dialog to avoid hydration mismatch
   useEffect(() => {
@@ -32,43 +38,52 @@ export function CreateDeckDialog() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsCreating(true);
+    setIsUpdating(true);
     setError(null);
 
     try {
-      await createDeck({
+      await updateDeck({
+        id: deckId,
         name,
-        description,
+        description: description || undefined,
       });
       
-      // Reset form fields
-      setName('');
-      setDescription('');
       setIsOpen(false);
       router.refresh(); // Refresh server component data
     } catch (error) {
-      console.error('Failed to create deck:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create deck');
+      console.error('Failed to update deck:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update deck');
     } finally {
-      setIsCreating(false);
+      setIsUpdating(false);
+    }
+  };
+
+  // Reset form when dialog opens
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      // Reset form to current values when opening
+      setName(currentName);
+      setDescription(currentDescription || '');
+      setError(null);
     }
   };
 
   // Prevent hydration mismatch by not rendering Dialog until mounted
   if (!mounted) {
-    return <Button size="lg">Create New Deck</Button>;
+    return <Button variant="outline">Edit Deck</Button>;
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg">Create New Deck</Button>
+        <Button variant="outline">Edit Deck</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New Deck</DialogTitle>
+          <DialogTitle>Edit Deck</DialogTitle>
           <DialogDescription>
-            Add a new flashcard deck to your collection
+            Update the name and description of your deck
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -89,11 +104,11 @@ export function CreateDeckDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description">Description (Optional)</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="What is this deck about?"
+              placeholder="e.g., Common Spanish words and phrases"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -107,8 +122,8 @@ export function CreateDeckDialog() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Deck'}
+            <Button type="submit" disabled={isUpdating}>
+              {isUpdating ? 'Updating...' : 'Update Deck'}
             </Button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +13,23 @@ import {
 import { SignIn, SignUp } from '@clerk/nextjs';
 
 export function SignInDialog() {
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted before rendering Dialog to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch by not rendering Dialog until mounted
+  if (!mounted) {
+    return (
+      <div className="flex gap-4">
+        <Button size="lg">Sign In</Button>
+        <Button size="lg" variant="outline">Sign Up</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex gap-4">
       {/* Sign In Modal */}
