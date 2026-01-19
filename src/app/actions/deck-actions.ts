@@ -86,7 +86,9 @@ export async function updateDeck(input: UpdateDeckInput) {
     throw new Error('Deck not found');
   }
 
+  // Revalidate both dashboard and the specific deck page
   revalidatePath('/dashboard');
+  revalidatePath(`/decks/${validatedData.id}`);
 
   return updatedDeck;
 }
