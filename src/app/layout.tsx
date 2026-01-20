@@ -34,11 +34,17 @@ export default function RootLayout({
               <Link href="/" className="text-xl font-semibold hover:opacity-80 transition-opacity">
                 FlashyCardy
               </Link>
-              <div className="flex items-center gap-4">
+              <nav className="flex items-center gap-6">
+                <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Pricing
+                </Link>
                 <SignedIn>
+                  <Link href="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    Dashboard
+                  </Link>
                   <UserButton afterSignOutUrl="/" />
                 </SignedIn>
-              </div>
+              </nav>
             </div>
           </header>
           {children}

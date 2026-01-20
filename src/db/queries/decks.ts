@@ -56,12 +56,22 @@ export async function updateDeckById(
   userId: string,
   updates: { name?: string; description?: string | null }
 ) {
+  // Build the update object explicitly to handle null values
+  const updateData: Record<string, any> = {
+    updatedAt: new Date(),
+  };
+  
+  if (updates.name !== undefined) {
+    updateData.name = updates.name;
+  }
+  
+  if (updates.description !== undefined) {
+    updateData.description = updates.description;
+  }
+  
   const [updatedDeck] = await db
     .update(decksTable)
-    .set({
-      ...updates,
-      updatedAt: new Date(),
-    })
+    .set(updateData)
     .where(and(
       eq(decksTable.id, deckId),
       eq(decksTable.userId, userId)

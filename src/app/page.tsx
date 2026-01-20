@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { SignInDialog } from '@/components/SignInDialog';
+import { Button } from '@/components/ui/button';
 
 export default async function Home() {
   const { userId } = await auth();
@@ -21,7 +23,14 @@ export default async function Home() {
             Your personal flashcard platform
           </p>
         </div>
-        <SignInDialog />
+        <div className="flex flex-col sm:flex-row gap-4">
+          <SignInDialog />
+          <Link href="/pricing">
+            <Button variant="outline">
+              View Pricing
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

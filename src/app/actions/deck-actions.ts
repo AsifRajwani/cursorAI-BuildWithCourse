@@ -19,7 +19,7 @@ const CreateDeckSchema = z.object({
 const UpdateDeckSchema = z.object({
   id: z.number().positive(),
   name: z.string().min(1).max(255).trim().optional(),
-  description: z.string().max(1000).trim().optional(),
+  description: z.string().max(1000).trim().nullable().optional(),
 });
 
 const DeleteDeckSchema = z.object({
@@ -38,7 +38,7 @@ type DeleteDeckInput = z.infer<typeof DeleteDeckSchema>;
  * Create a new deck
  */
 export async function createDeck(input: CreateDeckInput) {
-  const { userId } = await auth();
+  const { userId, has } = await auth();
   
   if (!userId) {
     throw new Error('Unauthorized');
@@ -46,6 +46,19 @@ export async function createDeck(input: CreateDeckInput) {
 
   // Validate input with Zod
   const validatedData = CreateDeckSchema.parse(input);
+
+  // Check if user has unlimited decks feature (pro plan)
+  const hasUnlimitedDecks = has({ feature: 'unlimited_deck' });
+
+  // If user doesn't have unlimited decks, enforce the 3 deck limit
+  if (!hasUnlimitedDecks) {
+    const { getDecksByUserId } = await import('@/db/queries/decks');
+    const userDecks = await getDecksByUserId(userId);
+    
+    if (userDecks.length >= 3) {
+      throw new Error('You have reached the 3 deck limit on the Free plan. Upgrade to Pro for unlimited decks.');
+    }
+  }
 
   // Call mutation helper from db/queries
   const newDeck = await insertDeck(
@@ -73,13 +86,22 @@ export async function updateDeck(input: UpdateDeckInput) {
   const validatedData = UpdateDeckSchema.parse(input);
 
   // Call mutation helper from db/queries
+  // Prepare updates object, only including fields that were provided
+  const updates: { name?: string; description?: string | null } = {};
+  
+  if (validatedData.name !== undefined) {
+    updates.name = validatedData.name;
+  }
+  
+  if (validatedData.description !== undefined) {
+    // If description is provided (even if empty string or null), update it
+    updates.description = validatedData.description;
+  }
+  
   const updatedDeck = await updateDeckById(
     validatedData.id,
     userId,
-    {
-      name: validatedData.name,
-      description: validatedData.description,
-    }
+    updates
   );
 
   if (!updatedDeck) {

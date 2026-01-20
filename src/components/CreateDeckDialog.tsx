@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,7 +17,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createDeck } from '@/app/actions/deck-actions';
 
-export function CreateDeckDialog() {
+interface CreateDeckDialogProps {
+  hasUnlimitedDecks: boolean;
+  currentDeckCount: number;
+}
+
+export function CreateDeckDialog({ 
+  hasUnlimitedDecks,
+  currentDeckCount 
+}: CreateDeckDialogProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -54,9 +63,34 @@ export function CreateDeckDialog() {
     }
   };
 
+  // Check if user has reached the free plan limit
+  const hasReachedLimit = !hasUnlimitedDecks && currentDeckCount >= 3;
+
   // Prevent hydration mismatch by not rendering Dialog until mounted
   if (!mounted) {
-    return <Button size="lg">Create New Deck</Button>;
+    return (
+      <Button size="lg" disabled={hasReachedLimit}>
+        {hasReachedLimit ? 'Deck Limit Reached' : 'Create New Deck'}
+      </Button>
+    );
+  }
+
+  // If limit reached, show upgrade prompt instead of dialog
+  if (hasReachedLimit) {
+    return (
+      <div className="flex flex-col items-end gap-2">
+        <Button size="lg" disabled>
+          Deck Limit Reached
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          You've reached the 3 deck limit on the Free plan.{' '}
+          <Link href="/pricing" className="text-primary hover:underline font-medium">
+            Upgrade to Pro
+          </Link>{' '}
+          for unlimited decks.
+        </p>
+      </div>
+    );
   }
 
   return (

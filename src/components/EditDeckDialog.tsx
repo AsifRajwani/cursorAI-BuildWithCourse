@@ -45,7 +45,7 @@ export function EditDeckDialog({ deckId, currentName, currentDescription }: Edit
       await updateDeck({
         id: deckId,
         name,
-        description: description || undefined,
+        description: description.trim() ? description.trim() : null,
       });
       
       setIsOpen(false);

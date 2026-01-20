@@ -16,6 +16,7 @@ import { DeleteDeckDialog } from '@/components/DeleteDeckDialog';
 import { EditCardDialog } from '@/components/EditCardDialog';
 import { DeleteCardDialog } from '@/components/DeleteCardDialog';
 import { AddCardDialog } from '@/components/AddCardDialog';
+import { GenerateAIButton } from '@/components/GenerateAIButton';
 
 interface DeckPageProps {
   params: Promise<{
@@ -24,7 +25,7 @@ interface DeckPageProps {
 }
 
 export default async function DeckPage({ params }: DeckPageProps) {
-  const { userId } = await auth();
+  const { userId, has } = await auth();
   
   if (!userId) {
     redirect('/');
@@ -46,6 +47,9 @@ export default async function DeckPage({ params }: DeckPageProps) {
 
   // Fetch cards for this deck
   const cards = await getCardsByDeckId(deckId);
+
+  // Check if user has AI generation feature
+  const hasAIGeneration = has({ feature: 'ai_flashcard_generation' });
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,6 +89,12 @@ export default async function DeckPage({ params }: DeckPageProps) {
         {/* Action Buttons */}
         <div className="mb-6 flex gap-4">
           <AddCardDialog deckId={deckId} />
+          <GenerateAIButton 
+            deckId={deckId} 
+            hasAIGeneration={hasAIGeneration}
+            hasDescription={!!deck.description && deck.description.trim().length > 0}
+            deckName={deck.name}
+          />
           {cards.length > 0 && (
             <Link href={`/decks/${deckId}/study`}>
               <Button variant="default" size="default">
