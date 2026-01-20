@@ -1,0 +1,434 @@
+---
+alwaysApply: true
+---
+
+# Clerk Billing
+
+## Overview
+
+This application uses **Clerk Billing** to handle all subscriptions and payments. Clerk Billing is currently in Beta, so APIs may undergo breaking changes. We recommend pinning SDK and `clerk-js` package versions to avoid disruptions.
+
+**Important**: Clerk Billing uses Stripe for payment processing only. Plans and subscriptions are managed by Clerk, not Stripe Billing. Payments are processed in USD only.
+
+## Business Model
+
+This app uses **B2C (Business-to-Consumer) Billing** to charge individual users for subscriptions.
+
+## Available Plans
+
+The application has the following subscription plans:
+
+1. **`free_user`** - Free tier with limited features
+2. **`pro`** - Premium tier with full features
+
+## Available Features
+
+The application has the following feature flags:
+
+1. **`3_deck_limit`** - Restricts users to a maximum of 3 decks (free tier)
+2. **`unlimited_deck`** - Allows unlimited deck creation (pro tier)
+3. **`ai_flashcard_generation`** - Enables AI-powered flashcard generation (pro tier)
+
+## Feature Access Patterns
+
+### Checking Feature Access
+
+Always check feature access before allowing users to perform premium actions:
+
+✅ **CORRECT** - Check feature access before action:
+```typescript
+import { auth } from '@clerk/nextjs/server';
+
+export default async function DashboardPage() {
+  const { has } = await auth();
+  
+ // Check if user has unlimited decks feature
+ const hasUnlimitedDecks = has({ feature: 'unlimited_deck' });
+  
+  // Check if user has AI generation feature
+  const hasAIGeneration = has({ feature: 'ai_flashcard_generation' });
+  
+  return (
+    <div>
+      {hasUnlimitedDecks ? (
+        <button>Create New Deck</button>
+      ) : (
+        <button disabled>Upgrade to Pro for Unlimited Decks</button>
+      )}
+    </div>
+  );
+}
+```
+
+❌ **WRONG** - Not checking feature access:
+```typescript
+// WRONG - Always allowing premium features
+export default async function DashboardPage() {
+  return (
+    <div>
+      <button>Create New Deck</button>
+      <button>Generate AI Flashcards</button>
+    </div>
+  );
+}
+```
+
+### Checking Plan Membership
+
+Check if a user is on a specific plan:
+
+```typescript
+import { auth } from '@clerk/nextjs/server';
+
+export default async function ProfilePage() {
+  const { has } = await auth();
+  
+  // Check if user is on pro plan
+  const isPro = has({ plan: 'pro' });
+  const isFree = has({ plan: 'free_user' });
+  
+  return (
+    <div>
+      <h1>Your Plan: {isPro ? 'Pro' : 'Free'}</h1>
+      {!isPro && <button>Upgrade to Pro</button>}
+    </div>
+  );
+}
+```
+
+### Client-Side Feature Checks
+
+For Client Components, use Clerk's `useAuth` hook:
+
+```typescript
+'use client';
+
+import { useAuth } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
+
+export function CreateDeckButton() {
+  const { has } = useAuth();
+  
+  // Check feature access
+  const hasUnlimitedDecks = has({ feature: 'unlimited_decks' });
+  
+  if (!hasUnlimitedDecks) {
+    return (
+      <Button disabled>
+        Upgrade to Pro for Unlimited Decks
+      </Button>
+    );
+  }
+  
+  return <Button>Create New Deck</Button>;
+}
+```
+
+## Protecting UI Elements
+
+### Pattern: Conditional Rendering Based on Features
+
+```typescript
+import { auth } from '@clerk/nextjs/server';
+
+export default async function DashboardPage() {
+  const { has } = await auth();
+  
+  const hasUnlimitedDecks = has({ feature: 'unlimited_decks' });
+  const hasAIGeneration = has({ feature: 'ai_flashcard_generation' });
+  
+  return (
+    <div>
+      {/* Show different UI based on features */}
+      {hasUnlimitedDecks ? (
+        <div>
+          <h2>Create Unlimited Decks</h2>
+          <CreateDeckButton />
+        </div>
+      ) : (
+        <div>
+          <h2>Free Plan: 3 Deck Limit</h2>
+          <p>Upgrade to Pro for unlimited decks</p>
+          <UpgradeButton />
+        </div>
+      )}
+      
+      {/* Show AI features only for pro users */}
+      {hasAIGeneration && (
+        <div>
+          <h2>AI Flashcard Generation</h2>
+          <GenerateAIButton />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Pattern: Enforcing Deck Limit for Free Users
+
+```typescript
+'use server';
+
+import { auth } from '@clerk/nextjs/server';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { insertDeck, getDecksByUserId } from '@/db/queries/decks';
+
+const CreateDeckSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+});
+
+type CreateDeckInput = z.infer<typeof CreateDeckSchema>;
+
+export async function createDeck(input: CreateDeckInput) {
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    throw new Error('Unauthorized');
+  }
+  
+ // Check if user has unlimited decks feature
+ const hasUnlimitedDecks = has({ feature: 'unlimited_deck' });
+  
+  // If user doesn't have unlimited decks, check the limit
+  if (!hasUnlimitedDecks) {
+    const userDecks = await getDecksByUserId(userId);
+    
+    if (userDecks.length >= 3) {
+      throw new Error('Free users can only create 3 decks. Upgrade to Pro for unlimited decks.');
+    }
+  }
+  
+  // Validate input
+  const validatedData = CreateDeckSchema.parse(input);
+  
+  // Create deck
+  const newDeck = await insertDeck(
+    userId,
+    validatedData.name,
+    validatedData.description || ''
+  );
+  
+  revalidatePath('/dashboard');
+  
+  return newDeck;
+}
+```
+
+### Pattern: Protecting Premium Features
+
+```typescript
+'use server';
+
+import { auth } from '@clerk/nextjs/server';
+
+export async function generateAIFlashcards(deckId: number, topic: string) {
+  const { userId, has } = await auth();
+  
+  if (!userId) {
+    throw new Error('Unauthorized');
+  }
+  
+  // Check if user has AI generation feature
+  const hasAIGeneration = has({ feature: 'ai_flashcard_generation' });
+  
+  if (!hasAIGeneration) {
+    throw new Error('AI flashcard generation is only available for Pro users. Please upgrade your plan.');
+  }
+  
+  // Continue with AI generation logic
+  // ...
+}
+```
+
+## Subscription Management
+
+### Upgrading/Downgrading Plans
+
+- **Upgrades**: Take effect immediately
+- **Downgrades**: Take effect at the end of the current billing cycle
+
+### Billing Cycles
+
+- Monthly subscriptions (default)
+- Annual subscriptions (optional, with discounted monthly price)
+
+## Webhooks
+
+Use Clerk webhooks to track subscription lifecycles and monitor payment attempts. See [Clerk Billing Webhooks Documentation](https://clerk.com/docs/guides/development/webhooks/billing).
+
+Common webhook events to handle:
+- Subscription created
+- Subscription updated
+- Subscription canceled
+- Payment succeeded
+- Payment failed
+
+## Important Limitations
+
+### Current Restrictions
+
+1. **Currency**: Only USD is supported
+2. **Geography**: Not supported in Brazil, India, Malaysia, Mexico, Singapore, and Thailand
+3. **Tax/VAT**: Not currently supported (planned for future)
+4. **Custom Pricing**: Not currently supported (planned for future)
+5. **Merchant of Record**: Clerk does not provide MoR services
+
+### Beta Status
+
+Clerk Billing is in Beta. Always:
+- Pin SDK versions to avoid breaking changes
+- Pin `clerk-js` package versions
+- Test thoroughly before deploying changes
+
+## Testing
+
+### Test Mode
+
+Use Stripe test mode to simulate:
+- Expired cards
+- Canceled subscriptions
+- Failed payments
+
+See [Stripe Testing Documentation](https://docs.stripe.com/testing) for test card numbers.
+
+### Environment Setup
+
+- **Development**: Use Stripe sandbox/test account
+- **Production**: Must use separate Stripe account (cannot reuse dev account)
+
+## Best Practices
+
+### 1. Always Check Feature Access
+
+Before allowing any premium action, check feature access:
+
+```typescript
+const { has } = await auth();
+const hasFeature = has({ feature: 'feature_name' });
+
+if (!hasFeature) {
+  throw new Error('This feature requires a Pro subscription');
+}
+```
+
+### 2. Graceful Degradation
+
+Show appropriate upgrade prompts instead of hiding features:
+
+```typescript
+// Good: Show what's available with upgrade
+{!hasFeature && (
+  <div>
+    <p>This feature is available on Pro plan</p>
+    <UpgradeButton />
+  </div>
+)}
+
+// Avoid: Just hiding features
+{hasFeature && <PremiumFeature />}
+```
+
+### 3. Server-Side Enforcement
+
+Always enforce limits on the server, not just in UI:
+
+```typescript
+// Server Action
+export async function performPremiumAction() {
+  const { has } = await auth();
+  
+  // Enforce on server
+  if (!has({ feature: 'premium_feature' })) {
+    throw new Error('Unauthorized');
+  }
+  
+  // Continue with action
+}
+```
+
+### 4. User-Friendly Error Messages
+
+Provide clear, actionable error messages:
+
+```typescript
+if (userDecks.length >= 3 && !hasUnlimitedDecks) {
+  throw new Error(
+    'You have reached the 3 deck limit on the Free plan. ' +
+    'Upgrade to Pro for unlimited decks.'
+  );
+}
+```
+
+## Integration with shadcn/ui
+
+When building billing UI, always use shadcn/ui components:
+
+```typescript
+'use client';
+
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@clerk/nextjs';
+
+export function PricingCard() {
+  const { has } = useAuth();
+  const isPro = has({ plan: 'pro' });
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Pro Plan
+          {isPro && <Badge className="ml-2">Current Plan</Badge>}
+        </CardTitle>
+        <CardDescription>
+          Unlock all premium features
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul>
+          <li>✓ Unlimited decks</li>
+          <li>✓ AI flashcard generation</li>
+        </ul>
+        {!isPro && (
+          <Button className="mt-4">
+            Upgrade to Pro
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Summary - Golden Rules
+
+### 🚨 ALWAYS FOLLOW THESE RULES 🚨
+
+1. **Check Feature Access**: Always verify feature access before allowing premium actions
+2. **Server-Side Enforcement**: Enforce limits on the server, not just in UI
+3. **Graceful Degradation**: Show upgrade prompts for locked features
+4. **User-Friendly Errors**: Provide clear, actionable error messages
+5. **Pin Versions**: Pin SDK versions due to Beta status
+6. **Test Thoroughly**: Use Stripe test mode for all scenarios
+7. **USD Only**: All pricing and payments are in USD
+8. **No Custom Plans**: Use only `free_user` and `pro` plans
+9. **Feature Flags**: Use the three defined features: `3_deck_limit`, `unlimited_decks`, `ai_flashcard_generation`
+
+## Resources
+
+- [Clerk Billing Documentation](https://clerk.com/docs/guides/billing/overview)
+- [Clerk B2C Billing](https://clerk.com/docs/guides/billing/for-b2c)
+- [Clerk Billing Webhooks](https://clerk.com/docs/guides/development/webhooks/billing)
+- [Stripe Testing](https://docs.stripe.com/testing)
+- [Stripe Global Availability](https://stripe.com/global)
