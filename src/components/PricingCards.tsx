@@ -26,7 +26,6 @@ export function PricingCards({ userId, isPro, isFree }: PricingCardsProps) {
 
   const handleOpenBilling = () => {
     // Open user profile modal directly to the billing page
-    // @ts-expect-error - __experimental_startPath is not in types yet
     openUserProfile({
       __experimental_startPath: '/billing',
       appearance: {
