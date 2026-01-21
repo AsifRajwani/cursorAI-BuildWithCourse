@@ -18,8 +18,8 @@ type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsSchema>;
 
 // Flashcard schema for AI output
 const FlashcardSchema = z.object({
-  front: z.string().describe('The front of the flashcard'),
-  back: z.string().describe('The back of the flashcard'),
+  front: z.string().describe('A clear, concise question or prompt. Should be specific and unambiguous.'),
+  back: z.string().describe('A comprehensive answer or explanation. Should be educational and include examples where helpful.'),
 });
 
 const FlashcardsResponseSchema = z.object({
@@ -67,7 +67,7 @@ export async function generateAIFlashcards(input: GenerateFlashcardsInput) {
   try {
     // Generate flashcards using AI with a context-aware prompt
     const { object } = await generateObject({
-      model: openai('gpt-4o'),
+      model: openai('gpt-4o-mini'),
       schema: FlashcardsResponseSchema,
       prompt: `Generate 20 flashcards for a deck titled "${deck.name}" with the description: "${deck.description}".
 

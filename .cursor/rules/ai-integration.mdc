@@ -50,8 +50,8 @@ import { z } from 'zod';
 
 // Define the schema for a single flashcard
 const FlashcardSchema = z.object({
-  front: z.string().describe('The question or prompt on the front of the flashcard'),
-  back: z.string().describe('The answer or explanation on the back of the flashcard'),
+  front: z.string().describe('A clear, concise question or prompt. Should be specific and unambiguous.'),
+  back: z.string().describe('A comprehensive answer or explanation. Should be educational and include examples where helpful.'),
 });
 
 // Define the schema for the response (array of flashcards)
@@ -61,7 +61,7 @@ const FlashcardsResponseSchema = z.object({
 
 // Generate flashcards
 const { object } = await generateObject({
-  model: openai('gpt-4-turbo'),
+  model: openai('gpt-4o-mini'),
   schema: FlashcardsResponseSchema,
   prompt: `Generate 5 flashcards about JavaScript promises. 
   Each flashcard should have a question on the front and a clear, concise answer on the back.`,
@@ -96,8 +96,8 @@ type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsSchema>;
 
 // Flashcard schema for AI output
 const FlashcardSchema = z.object({
-  front: z.string().describe('The question or prompt on the front of the flashcard'),
-  back: z.string().describe('The answer or explanation on the back of the flashcard'),
+  front: z.string().describe('A clear, concise question or prompt. Should be specific and unambiguous.'),
+  back: z.string().describe('A comprehensive answer or explanation. Should be educational and include examples where helpful.'),
 });
 
 const FlashcardsResponseSchema = z.object({
@@ -131,7 +131,7 @@ export async function generateAIFlashcards(input: GenerateFlashcardsInput) {
   try {
     // Generate flashcards using AI
     const { object } = await generateObject({
-      model: openai('gpt-4-turbo'),
+      model: openai('gpt-4o-mini'),
       schema: FlashcardsResponseSchema,
       prompt: `Generate ${validatedData.count} flashcards about "${validatedData.topic}". 
       Each flashcard should have:
@@ -175,20 +175,20 @@ export async function generateAIFlashcards(input: GenerateFlashcardsInput) {
 ```typescript
 import { openai } from '@ai-sdk/openai';
 
-// GPT-4 Turbo (recommended for flashcard generation)
+// GPT-4o-mini (RECOMMENDED - cheapest, good quality)
+const model = openai('gpt-4o-mini');
+
+// GPT-4o (optimized, higher quality, more expensive)
+const model = openai('gpt-4o');
+
+// GPT-4 Turbo (high quality, more expensive)
 const model = openai('gpt-4-turbo');
 
-// GPT-4 (more expensive, similar quality)
+// GPT-4 (highest quality, most expensive)
 const model = openai('gpt-4');
-
-// GPT-3.5 Turbo (faster, cheaper, lower quality)
-const model = openai('gpt-3.5-turbo');
-
-// GPT-4o (optimized, good balance)
-const model = openai('gpt-4o');
 ```
 
-**Recommendation**: Use `gpt-4-turbo` for best quality flashcards. It provides excellent understanding of context and generates high-quality educational content.
+**Recommendation**: Use `gpt-4o-mini` for cost-effective flashcard generation. It provides good quality at the lowest cost. For higher quality output, consider `gpt-4o` or `gpt-4-turbo`.
 
 ## Advanced Patterns
 
@@ -196,7 +196,7 @@ const model = openai('gpt-4o');
 
 ```typescript
 const { object } = await generateObject({
-  model: openai('gpt-4-turbo'),
+  model: openai('gpt-4o-mini'),
   schema: FlashcardsResponseSchema,
   prompt: `Generate ${count} flashcards about "${topic}".
   
@@ -219,7 +219,7 @@ const existingCards = await getCardsByDeckId(deckId);
 const existingTopics = existingCards.map(c => c.front).join(', ');
 
 const { object } = await generateObject({
-  model: openai('gpt-4-turbo'),
+  model: openai('gpt-4o-mini'),
   schema: FlashcardsResponseSchema,
   prompt: `Generate ${count} NEW flashcards about "${topic}".
   
@@ -237,7 +237,7 @@ import { streamObject } from 'ai';
 
 // Stream flashcards as they're generated (for better UX)
 const { partialObjectStream } = await streamObject({
-  model: openai('gpt-4-turbo'),
+  model: openai('gpt-4o-mini'),
   schema: FlashcardsResponseSchema,
   prompt: `Generate 10 flashcards about "${topic}"`,
 });
@@ -295,7 +295,7 @@ Provide user-friendly error messages:
 ```typescript
 try {
   const { object } = await generateObject({
-    model: openai('gpt-4-turbo'),
+    model: openai('gpt-4o-mini'),
     schema: FlashcardsResponseSchema,
     prompt: prompt,
   });
@@ -321,7 +321,7 @@ Track token usage and costs:
 
 ```typescript
 const { object, usage } = await generateObject({
-  model: openai('gpt-4-turbo'),
+  model: openai('gpt-4o-mini'),
   schema: FlashcardsResponseSchema,
   prompt: prompt,
 });
@@ -467,7 +467,7 @@ const prompts = [
 
 for (const prompt of prompts) {
   const { object } = await generateObject({
-    model: openai('gpt-4-turbo'),
+    model: openai('gpt-4o-mini'),
     schema: FlashcardsResponseSchema,
     prompt,
   });
@@ -505,7 +505,7 @@ if (process.env.NODE_ENV === 'development' && process.env.MOCK_AI === 'true') {
 4. **Server Actions**: AI generation MUST be in server actions, never in client components
 5. **Input Validation**: Always validate user inputs with Zod before passing to AI
 6. **Environment Variables**: Never hardcode API keys, always use `process.env.OPENAI_API_KEY`
-7. **Model Choice**: Use `gpt-4-turbo` for best quality flashcard generation
+7. **Model Choice**: Use `gpt-4o-mini` for cost-effective flashcard generation
 8. **Revalidation**: Always call `revalidatePath()` after generating cards
 9. **Ownership**: Verify deck ownership before generating cards
 10. **Rate Limiting**: Consider implementing rate limits to prevent abuse

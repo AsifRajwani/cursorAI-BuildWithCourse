@@ -154,12 +154,13 @@ export function PricingCards({ userId, isPro, isFree }: PricingCardsProps) {
             
             {/* Billing Toggle - Segmented Control */}
             <div className="flex items-center gap-1 mt-6 p-1 bg-muted rounded-lg border border-border">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setIsAnnual(false)}
                 className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
                   !isAnnual
-                    ? 'bg-primary text-primary-foreground shadow-md'
+                    ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary hover:text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
@@ -179,13 +180,14 @@ export function PricingCards({ userId, isPro, isFree }: PricingCardsProps) {
                 <span className={!isAnnual ? 'underline underline-offset-2 decoration-2' : ''}>
                   Monthly
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setIsAnnual(true)}
                 className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   isAnnual
-                    ? 'bg-primary text-primary-foreground shadow-md'
+                    ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary hover:text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
@@ -211,7 +213,7 @@ export function PricingCards({ userId, isPro, isFree }: PricingCardsProps) {
                 >
                   Save 25%
                 </Badge>
-              </button>
+              </Button>
             </div>
 
             <div className="mt-4">
