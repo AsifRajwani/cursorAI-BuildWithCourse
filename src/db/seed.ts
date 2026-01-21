@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import { db } from './index';
 import { decksTable, cardsTable } from './schema';
-import { eq } from 'drizzle-orm';
 
 /**
  * Seed file for development/testing purposes

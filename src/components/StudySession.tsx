@@ -42,7 +42,7 @@ export function StudySession({ deck, cards }: StudySessionProps) {
             <CardHeader>
               <CardTitle>No Cards Available</CardTitle>
               <CardDescription>
-                This deck doesn't have any cards yet. Add some cards before starting a study session.
+                This deck doesn&apos;t have any cards yet. Add some cards before starting a study session.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -138,7 +138,7 @@ export function StudySession({ deck, cards }: StudySessionProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, isFlipped, shuffledCards.length]); // Re-run effect when dependencies change
+  }, [currentIndex, isFlipped, shuffledCards.length, handlePrevious, handleNext, handleFlip]); // Re-run effect when dependencies change
 
   // Calculate score
   const correctCount = Object.values(answers).filter(a => a === 'correct').length;

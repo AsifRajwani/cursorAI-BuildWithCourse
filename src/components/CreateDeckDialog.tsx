@@ -83,7 +83,7 @@ export function CreateDeckDialog({
           Deck Limit Reached
         </Button>
         <p className="text-sm text-muted-foreground">
-          You've reached the 3 deck limit on the Free plan.{' '}
+          You&apos;ve reached the 3 deck limit on the Free plan.{' '}
           <Link href="/pricing" className="text-primary hover:underline font-medium">
             Upgrade to Pro
           </Link>{' '}
