@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getDecksByUserId } from '@/db/queries/decks';
+import { getDecksWithCardCountByUserId } from '@/db/queries/decks';
 import { CreateDeckDialog } from '@/components/CreateDeckDialog';
 
 export default async function DashboardPage() {
@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   }
 
   // Fetch data using query helper from db/queries
-  const decks = await getDecksByUserId(userId);
+  const decks = await getDecksWithCardCountByUserId(userId);
 
   // Check if user has unlimited decks feature (pro plan)
   const hasUnlimitedDecks = has({ feature: 'unlimited_deck' });
@@ -82,23 +82,36 @@ export default async function DashboardPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {decks.map((deck) => (
-              <Link key={deck.id} href={`/decks/${deck.id}`}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <CardTitle>{deck.name}</CardTitle>
-                    {deck.description && (
-                      <CardDescription>{deck.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Updated {new Date(deck.updatedAt).toLocaleDateString()}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+            {decks.map((deck) => {
+              const cardCountLabel = `${deck.cardCount} ${
+                deck.cardCount === 1 ? 'card' : 'cards'
+              }`;
+
+              return (
+                <Link
+                  key={deck.id}
+                  href={`/decks/${deck.id}`}
+                  className="block h-full"
+                >
+                  <Card className="flex h-full flex-col cursor-pointer transition-shadow hover:shadow-lg">
+                    <CardHeader className="flex-1">
+                      <CardTitle>{deck.name}</CardTitle>
+                      {deck.description && (
+                        <CardDescription>{deck.description}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="mt-auto">
+                      <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+                        <span>
+                          Updated {new Date(deck.updatedAt).toLocaleDateString()}
+                        </span>
+                        <Badge variant="secondary">{cardCountLabel}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
