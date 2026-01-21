@@ -110,7 +110,7 @@ export function CreateDeckButton() {
   const { has } = useAuth();
   
   // Check feature access
-  const hasUnlimitedDecks = has({ feature: 'unlimited_decks' });
+  const hasUnlimitedDecks = has({ feature: 'unlimited_deck' });
   
   if (!hasUnlimitedDecks) {
     return (
@@ -134,7 +134,7 @@ import { auth } from '@clerk/nextjs/server';
 export default async function DashboardPage() {
   const { has } = await auth();
   
-  const hasUnlimitedDecks = has({ feature: 'unlimited_decks' });
+  const hasUnlimitedDecks = has({ feature: 'unlimited_deck' });
   const hasAIGeneration = has({ feature: 'ai_flashcard_generation' });
   
   return (
@@ -423,7 +423,7 @@ export function PricingCard() {
 6. **Test Thoroughly**: Use Stripe test mode for all scenarios
 7. **USD Only**: All pricing and payments are in USD
 8. **No Custom Plans**: Use only `free_user` and `pro` plans
-9. **Feature Flags**: Use the three defined features: `3_deck_limit`, `unlimited_decks`, `ai_flashcard_generation`
+9. **Feature Flags**: Use the three defined features: `3_deck_limit`, `unlimited_deck`, `ai_flashcard_generation`
 
 ## Resources
 
