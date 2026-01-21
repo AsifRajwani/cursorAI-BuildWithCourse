@@ -1,6 +1,6 @@
 import { db } from '@/db';
-import { decksTable } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { cardsTable, decksTable } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 // ============= QUERIES (Read Operations) =============
 
@@ -12,6 +12,31 @@ export async function getDecksByUserId(userId: string) {
     .select()
     .from(decksTable)
     .where(eq(decksTable.userId, userId));
+}
+
+/**
+ * Get all decks with card counts for a specific user
+ */
+export async function getDecksWithCardCountByUserId(userId: string) {
+  return await db
+    .select({
+      id: decksTable.id,
+      name: decksTable.name,
+      description: decksTable.description,
+      createdAt: decksTable.createdAt,
+      updatedAt: decksTable.updatedAt,
+      cardCount: sql<number>`count(${cardsTable.id})`.mapWith(Number),
+    })
+    .from(decksTable)
+    .leftJoin(cardsTable, eq(cardsTable.deckId, decksTable.id))
+    .where(eq(decksTable.userId, userId))
+    .groupBy(
+      decksTable.id,
+      decksTable.name,
+      decksTable.description,
+      decksTable.createdAt,
+      decksTable.updatedAt
+    );
 }
 
 /**
