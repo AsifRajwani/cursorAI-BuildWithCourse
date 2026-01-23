@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import type { InferSelectModel } from 'drizzle-orm';
 import { decksTable, cardsTable } from '@/db/schema';
@@ -28,53 +28,25 @@ export function StudySession({ deck, cards }: StudySessionProps) {
   const [answers, setAnswers] = useState<Record<number, 'correct' | 'wrong'>>({});
   const [isComplete, setIsComplete] = useState(false);
 
-  // Handle case when no cards exist
-  if (cards.length === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8">
-          <Link href={`/decks/${deck.id}`}>
-            <Button variant="outline" className="mb-4">
-              ← Back to Deck
-            </Button>
-          </Link>
-          <Card>
-            <CardHeader>
-              <CardTitle>No Cards Available</CardTitle>
-              <CardDescription>
-                This deck doesn't have any cards yet. Add some cards before starting a study session.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href={`/decks/${deck.id}`}>
-                <Button>Go to Deck</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   const currentCard = shuffledCards[currentIndex];
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < shuffledCards.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     }
-  };
+  }, [currentIndex, shuffledCards.length]);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setIsFlipped(false);
     }
-  };
+  }, [currentIndex]);
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
+  const handleFlip = useCallback(() => {
+    setIsFlipped(prev => !prev);
+  }, []);
 
   const handleRestart = () => {
     setCurrentIndex(0);
@@ -138,7 +110,35 @@ export function StudySession({ deck, cards }: StudySessionProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, isFlipped, shuffledCards.length]); // Re-run effect when dependencies change
+  }, [handlePrevious, handleNext, handleFlip]);
+
+  // Handle case when no cards exist
+  if (cards.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8">
+          <Link href={`/decks/${deck.id}`}>
+            <Button variant="outline" className="mb-4">
+              ← Back to Deck
+            </Button>
+          </Link>
+          <Card>
+            <CardHeader>
+              <CardTitle>No Cards Available</CardTitle>
+              <CardDescription>
+                This deck doesn&apos;t have any cards yet. Add some cards before starting a study session.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href={`/decks/${deck.id}`}>
+                <Button>Go to Deck</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate score
   const correctCount = Object.values(answers).filter(a => a === 'correct').length;

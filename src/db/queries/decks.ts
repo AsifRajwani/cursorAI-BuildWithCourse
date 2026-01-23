@@ -76,7 +76,7 @@ export async function updateDeckById(
   updates: { name?: string; description?: string | null }
 ) {
   // Build the update object explicitly to handle null values
-  const updateData: Record<string, any> = {
+  const updateData: Record<string, string | Date | null> = {
     updatedAt: new Date(),
   };
   
